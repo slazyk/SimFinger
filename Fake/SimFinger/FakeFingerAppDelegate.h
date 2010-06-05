@@ -19,15 +19,18 @@
 	BOOL pointerOverlayIsHidden;
 	BOOL hardwareOverlayIsHidden;
 	
+	int screen;
 	int setTextMode;
 	NSMutableDictionary *springboardPrefs;
 	
 	IBOutlet NSPanel *setTextPanel;
 	IBOutlet NSTextField *setTextLabel;
 	IBOutlet NSTextField *setTextField;
+	IBOutlet NSMenu *controlMenu;
 }
 
 - (AXUIElementRef)simulatorApplication;
+- (AXUIElementRef)overlayApplication;
 
 - (IBAction)configureHardwareOverlay:(NSMenuItem *)sender;
 - (IBAction)configurePointerOverlay:(NSMenuItem *)sender;

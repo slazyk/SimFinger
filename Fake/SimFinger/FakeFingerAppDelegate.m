@@ -42,6 +42,13 @@ void WindowFrameDidChangeCallback( AXObserverRef observer, AXUIElementRef elemen
 }
 
 
+- (AXUIElementRef) overlayApplication {
+	NSProcessInfo *processInfo = [NSProcessInfo processInfo];
+	int processId = [processInfo processIdentifier];
+	AXUIElementRef element = AXUIElementCreateApplication(processId);
+	return element;
+}
+
 
 - (AXUIElementRef)simulatorApplication {
 	if(AXAPIEnabled())
@@ -71,13 +78,36 @@ void WindowFrameDidChangeCallback( AXObserverRef observer, AXUIElementRef elemen
 
 - (void)positionSimulatorWindow:(id)sender
 {
-				
-	AXUIElementRef element = [self simulatorApplication];
+	
+	AXUIElementRef element = [self overlayApplication];
 	
 	CFArrayRef attributeNames;
 	AXUIElementCopyAttributeNames(element, &attributeNames);
 	
 	CFArrayRef value;
+	AXUIElementCopyAttributeValue(element, CFSTR("AXWindows"), (CFTypeRef *)&value);
+	
+	CGPoint overlayPoint;
+	
+	for(id object in (NSArray *)value)
+	{
+		if(CFGetTypeID(object) == AXUIElementGetTypeID())
+		{
+			AXUIElementRef subElement = (AXUIElementRef)object;
+			
+			CFArrayRef subAttributeNames;
+			AXUIElementCopyAttributeNames(subElement, &subAttributeNames);
+			
+			CFTypeRef positionValue;
+			AXUIElementCopyAttributeValue(subElement, kAXPositionAttribute, (CFTypeRef *)&positionValue);
+			
+			AXValueGetValue(positionValue, kAXValueCGPointType, (void *)&overlayPoint);
+		}
+	}
+	
+	element = [self simulatorApplication];
+	
+	AXUIElementCopyAttributeNames(element, &attributeNames);	
 	AXUIElementCopyAttributeValue(element, CFSTR("AXWindows"), (CFTypeRef *)&value);
 	
 	for(id object in (NSArray *)value)
@@ -96,6 +126,8 @@ void WindowFrameDidChangeCallback( AXObserverRef observer, AXUIElementRef elemen
 			
 			CGSize size;
 			AXValueGetValue(sizeValue, kAXValueCGSizeType, (void *)&size);
+			
+			
 			
 			BOOL supportedSize = NO;
 			if((int)size.width == 386 && (int)size.height == 742)
@@ -123,8 +155,10 @@ void WindowFrameDidChangeCallback( AXObserverRef observer, AXUIElementRef elemen
 				AXUIElementIsAttributeSettable(subElement, kAXPositionAttribute, &settable);
 				
 				CGPoint point;
-				point.x = 121;
-				point.y = screenRect.size.height - size.height - 135;
+				int height = (int)size.height;
+				point.x = overlayPoint.x + 121;
+				point.y = overlayPoint.y + (height == 742 ? 108 : 112);
+				
 				AXValueRef pointValue = AXValueCreate(kAXValueCGPointType, &point);
 				
 				AXUIElementSetAttributeValue(subElement, kAXPositionAttribute, (CFTypeRef)pointValue);
@@ -133,7 +167,6 @@ void WindowFrameDidChangeCallback( AXObserverRef observer, AXUIElementRef elemen
 		}
 	}
 }
-
 
 
 - (NSString *)springboardPrefsPath
@@ -362,9 +395,16 @@ CGEventRef tapCallBack(CGEventTapProxy proxy, CGEventType type, CGEventRef event
 	return event;
 }
 
-- (void)applicationDidFinishLaunching:(NSNotification *)notification
-{
-	hardwareOverlay = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 634, 985) styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:NO];
+- (void)setupOverlay {
+	NSArray* screens = [NSScreen screens];
+	
+	if (hardwareOverlay != nil) {
+		[hardwareOverlay release];
+		[pointerOverlay release];
+		[fadeOverlay release];
+	}
+	
+	hardwareOverlay = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 634, 985) styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:NO screen:[screens objectAtIndex:screen]];
 	[hardwareOverlay setAlphaValue:1.0];
 	[hardwareOverlay setOpaque:NO];
 	[hardwareOverlay setBackgroundColor:[NSColor colorWithPatternImage:[NSImage imageNamed:@"iPhoneFrame"]]];
@@ -374,7 +414,7 @@ CGEventRef tapCallBack(CGEventTapProxy proxy, CGEventType type, CGEventRef event
 	
 	screenRect = [[hardwareOverlay screen] frame];
 	
-	pointerOverlay = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 50, 50) styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:NO];
+	pointerOverlay = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 50, 50) styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:NO screen:[screens objectAtIndex:screen]];
 	[pointerOverlay setAlphaValue:0.8];
 	[pointerOverlay setOpaque:NO];
 	[pointerOverlay setBackgroundColor:[NSColor colorWithPatternImage:[NSImage imageNamed:@"Hover"]]];
@@ -383,7 +423,7 @@ CGEventRef tapCallBack(CGEventTapProxy proxy, CGEventType type, CGEventRef event
 	[self _updateWindowPosition];
 	[pointerOverlay orderFront:nil];
 	
-	fadeOverlay = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 634, 985) styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:NO];
+	fadeOverlay = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 634, 985) styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:NO screen:[screens objectAtIndex:screen]];
 	[fadeOverlay setAlphaValue:1.0];
 	[fadeOverlay setOpaque:NO];
 	[fadeOverlay setBackgroundColor:[NSColor colorWithPatternImage:[NSImage imageNamed:@"FadeFrame"]]];
@@ -391,17 +431,40 @@ CGEventRef tapCallBack(CGEventTapProxy proxy, CGEventType type, CGEventRef event
 	[fadeOverlay setLevel:NSFloatingWindowLevel + 1];
 	[fadeOverlay orderFront:nil];
 	
-	CGEventMask mask =	CGEventMaskBit(kCGEventLeftMouseDown) | 
-						CGEventMaskBit(kCGEventLeftMouseUp) | 
-						CGEventMaskBit(kCGEventLeftMouseDragged) | 
-						CGEventMaskBit(kCGEventMouseMoved);
+}
 
+- (void)applicationDidFinishLaunching:(NSNotification *)notification
+{
+	screen = 0;
+	
+	NSArray* screens = [NSScreen screens];
+	int n = 0;
+	NSMenuItem* subItem = [[[NSMenuItem alloc] initWithTitle:@"Move to Display" action:nil keyEquivalent:@""] autorelease];
+	NSMenu* subMenu = [[[NSMenu alloc] initWithTitle:@"Move To Display"] autorelease];
+	
+	for(NSScreen* screen in screens) {
+		NSString *screenTitle = [[[NSString alloc] initWithFormat: @"%d", n] autorelease];
+		NSMenuItem *screenItem = [[[NSMenuItem alloc] initWithTitle:screenTitle action:@selector(moveToScreen:) keyEquivalent:@""] autorelease];
+		[screenItem setTag: n];
+		[subMenu addItem:screenItem];
+		n++;
+	}
+	
+	[subItem setSubmenu:subMenu];
+	[controlMenu insertItem:subItem atIndex: 3];
+	
+	[self setupOverlay];	
+	CGEventMask mask =	CGEventMaskBit(kCGEventLeftMouseDown) | 
+	CGEventMaskBit(kCGEventLeftMouseUp) | 
+	CGEventMaskBit(kCGEventLeftMouseDragged) | 
+	CGEventMaskBit(kCGEventMouseMoved);
+	
 	CFMachPortRef tap = CGEventTapCreate(kCGAnnotatedSessionEventTap,
-									kCGTailAppendEventTap,
-									kCGEventTapOptionListenOnly,
-									mask,
-									tapCallBack,
-									self);
+										 kCGTailAppendEventTap,
+										 kCGEventTapOptionListenOnly,
+										 mask,
+										 tapCallBack,
+										 self);
 	
 	CFRunLoopSourceRef runLoopSource = CFMachPortCreateRunLoopSource(NULL, tap, 0);
 	CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, kCFRunLoopCommonModes);
@@ -411,6 +474,18 @@ CGEventRef tapCallBack(CGEventTapProxy proxy, CGEventType type, CGEventRef event
 	
 	[self registerForSimulatorWindowResizedNotification];
 	[self positionSimulatorWindow:nil];
+}
+
+- (void)moveToScreen:(id)sender {
+	NSMenuItem* item = (NSMenuItem*) sender;
+	screen = [item tag];
+	NSArray* screens = [NSScreen screens];
+	if(screen < [screens count]) {
+		[self setupOverlay];
+		[self positionSimulatorWindow:self];
+	} else {
+		NSLog(@"Display not found");
+	}
 }
 
 @end
