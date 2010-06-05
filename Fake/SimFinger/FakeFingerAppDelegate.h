@@ -27,6 +27,7 @@
 	IBOutlet NSTextField *setTextLabel;
 	IBOutlet NSTextField *setTextField;
 	IBOutlet NSMenu *controlMenu;
+	IBOutlet NSMenu *screenMenu;
 }
 
 - (AXUIElementRef)simulatorApplication;

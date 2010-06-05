@@ -439,17 +439,22 @@ CGEventRef tapCallBack(CGEventTapProxy proxy, CGEventType type, CGEventRef event
 	
 	NSArray* screens = [NSScreen screens];
 	int n = 0;
-	NSMenuItem* subItem = [[[NSMenuItem alloc] initWithTitle:@"Move to Display" action:nil keyEquivalent:@""] autorelease];
-	NSMenu* subMenu = [[[NSMenu alloc] initWithTitle:@"Move To Display"] autorelease];
+	NSMenuItem* subItem = [[[NSMenuItem alloc] initWithTitle:@"Show on Display" action:nil keyEquivalent:@""] autorelease];
+	NSMenu* subMenu = [[[NSMenu alloc] initWithTitle:@"Show on Display"] autorelease];
 	
 	for(NSScreen* screen in screens) {
 		NSString *screenTitle = [[[NSString alloc] initWithFormat: @"%d", n] autorelease];
 		NSMenuItem *screenItem = [[[NSMenuItem alloc] initWithTitle:screenTitle action:@selector(moveToScreen:) keyEquivalent:@""] autorelease];
 		[screenItem setTag: n];
+		[screenItem setOnStateImage:[NSImage imageNamed:@"NSMenuCheckmark"]];
 		[subMenu addItem:screenItem];
+		if(n == 0) {
+			[screenItem setState: NSOnState];
+		}
 		n++;
 	}
 	
+	screenMenu = subMenu;
 	[subItem setSubmenu:subMenu];
 	[controlMenu insertItem:subItem atIndex: 3];
 	
@@ -481,6 +486,10 @@ CGEventRef tapCallBack(CGEventTapProxy proxy, CGEventType type, CGEventRef event
 	screen = [item tag];
 	NSArray* screens = [NSScreen screens];
 	if(screen < [screens count]) {
+		for(NSMenuItem *screenItem in [screenMenu itemArray]) {
+			[screenItem setState:NSOffState];
+		}
+		[item setState: NSOnState];
 		[self setupOverlay];
 		[self positionSimulatorWindow:self];
 	} else {
