@@ -9,6 +9,8 @@
 #import "FakeFingerAppDelegate.h"
 #import <Carbon/Carbon.h>
 
+const int kWindowXOffset = 50;
+const int kWindowYOffset = 50;
 
 void WindowFrameDidChangeCallback( AXObserverRef observer, AXUIElementRef element, CFStringRef notificationName, void * contextData ) {
     FakeFingerAppDelegate * delegate= (FakeFingerAppDelegate *) contextData;
@@ -149,13 +151,13 @@ void WindowFrameDidChangeCallback( AXObserverRef observer, AXUIElementRef elemen
 				
 				CGPoint point;
 				if (!iPadMode) {
-					point.x = 121;
-					point.y = screenRect.size.height - size.height - 135;					
+					point.x = 121 + kWindowXOffset;
+					point.y = screenRect.size.height - size.height - 135 + kWindowYOffset;
 				} else {
 					if (!landscape) {
-						point.x = 138;
+						point.x = 138 + kWindowXOffset;
 					} else {
-						point.x = 157;
+						point.x = 157 + kWindowYOffset;
 					}
 					
 					point.y = screenRect.size.height - size.height - 156;
@@ -399,7 +401,10 @@ CGEventRef tapCallBack(CGEventTapProxy proxy, CGEventType type, CGEventRef event
 
 - (void)applicationDidFinishLaunching:(NSNotification *)notification
 {
-	hardwareOverlay = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 634, 985) styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:NO];
+  int x = 0 + kWindowXOffset;
+  int y = 0 - kWindowYOffset;
+  
+	hardwareOverlay = [[NSWindow alloc] initWithContentRect:NSMakeRect(x, y, 634, 985) styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:NO];
 	[hardwareOverlay setAlphaValue:1.0];
 	[hardwareOverlay setOpaque:NO];
 	[hardwareOverlay setBackgroundColor:[NSColor colorWithPatternImage:[NSImage imageNamed:@"iPhoneFrame"]]];
@@ -409,7 +414,7 @@ CGEventRef tapCallBack(CGEventTapProxy proxy, CGEventType type, CGEventRef event
 	
 	screenRect = [[hardwareOverlay screen] frame];
 	
-	pointerOverlay = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 50, 50) styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:NO];
+	pointerOverlay = [[NSWindow alloc] initWithContentRect:NSMakeRect(x, y, 50, 50) styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:NO];
 	[pointerOverlay setAlphaValue:0.8];
 	[pointerOverlay setOpaque:NO];
 	[pointerOverlay setBackgroundColor:[NSColor colorWithPatternImage:[NSImage imageNamed:@"Hover"]]];
@@ -418,7 +423,7 @@ CGEventRef tapCallBack(CGEventTapProxy proxy, CGEventType type, CGEventRef event
 	[self _updateWindowPosition];
 	[pointerOverlay orderFront:nil];
 	
-	fadeOverlay = [[NSWindow alloc] initWithContentRect:NSMakeRect(0, 0, 634, 985) styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:NO];
+	fadeOverlay = [[NSWindow alloc] initWithContentRect:NSMakeRect(x, y, 634, 985) styleMask:NSBorderlessWindowMask backing:NSBackingStoreBuffered defer:NO];
 	[fadeOverlay setAlphaValue:1.0];
 	[fadeOverlay setOpaque:NO];
 	[fadeOverlay setBackgroundColor:[NSColor colorWithPatternImage:[NSImage imageNamed:@"FadeFrame"]]];
