@@ -105,6 +105,7 @@ void WindowFrameDidChangeCallback( AXObserverRef observer, AXUIElementRef elemen
 			BOOL supportedSize = NO;
 			BOOL iPadMode = NO;
 			BOOL landscape = NO;
+            BOOL half = NO;
 			if((int)size.width == 386 && (int)size.height == 742)
 			{
 				[hardwareOverlay setContentSize:NSMakeSize(634, 985)];
@@ -143,6 +144,27 @@ void WindowFrameDidChangeCallback( AXObserverRef observer, AXUIElementRef elemen
 				supportedSize = YES;
 				iPadMode = YES;
 				landscape = YES;
+			} else if ((int)size.width == 466 && (int)size.height == 616) {
+				[hardwareOverlay setContentSize:NSMakeSize(564, 705)];
+				[hardwareOverlay setBackgroundColor:[NSColor colorWithPatternImage:[NSImage imageNamed:@"iPadFrameHalf"]]];
+
+				[fadeOverlay setContentSize:NSMakeSize(564, 705)];
+				[fadeOverlay setBackgroundColor:[NSColor colorWithPatternImage:[NSImage imageNamed:@"iPadFadeHalf"]]];
+
+				supportedSize = YES;
+				iPadMode = YES;
+                half = YES;
+			} else if ((int)size.width == 594 && (int)size.height == 488) {
+				[hardwareOverlay setContentSize:NSMakeSize(705, 564)];
+				[hardwareOverlay setBackgroundColor:[NSColor colorWithPatternImage:[NSImage imageNamed:@"iPadFrameLandscapeHalf_right"]]];
+
+				[fadeOverlay setContentSize:NSMakeSize(705, 564)];
+				[fadeOverlay setBackgroundColor:[NSColor colorWithPatternImage:[NSImage imageNamed:@"iPadFadeLandscapeHalf"]]];
+
+				supportedSize = YES;
+				iPadMode = YES;
+                landscape = YES;
+                half = YES;
 			}
 			
 			if (supportedSize) {
@@ -154,13 +176,23 @@ void WindowFrameDidChangeCallback( AXObserverRef observer, AXUIElementRef elemen
 					point.x = 121 + kWindowXOffset;
 					point.y = screenRect.size.height - size.height - 135 + kWindowYOffset;
 				} else {
-					if (!landscape) {
-						point.x = 138 + kWindowXOffset;
-					} else {
-						point.x = 157 + kWindowYOffset;
-					}
-					
-					point.y = screenRect.size.height - size.height - 156;
+                    if (!half) {
+                        if (!landscape) {
+                            point.x = 138 + kWindowXOffset;
+                        } else {
+                            point.x = 157 + kWindowYOffset;
+                        }
+                        point.y = screenRect.size.height - size.height - 156;
+                    } else {
+                        if (!landscape) {
+                            point.x = 49 + kWindowXOffset;
+                            point.y = screenRect.size.height - size.height - 58 + kWindowYOffset;
+                        } else {
+                            point.x = 58 + kWindowXOffset;
+                            point.y = screenRect.size.height - size.height - 49 + kWindowYOffset;
+                        }
+                    }
+
 				}
 				AXValueRef pointValue = AXValueCreate(kAXValueCGPointType, &point);
 				
